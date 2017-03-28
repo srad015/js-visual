@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - particles - billboards</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				text-align:center;
+			}
+
+			a {
+				color:#0078ff;
+			}
+
+			#info {
+				color:#fff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				z-index:100;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div id="info">
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl particle billboards example
+		</div>
+
+		<script src="../build/three.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+			var camera, scene, renderer, particles, i, h, color, sprite, size;
+			var colors = [ [0.0, 0.5, 0.5], [1.0, 0.5, 0.5], [1.0, 1.0, 0.5] ];
+			var mouseX = 0, mouseY = 0;
+			var blocks = [{idx: 0, time: 100, op: "PUT", status: 0, hash: "U9F8J39FA0X90"}]; // Genesis
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var count = 0;
+
+			init();
+			animate();
+
+			function spawn(block)
+			{
+				var cylindrical = new THREE.Cylindrical();
+				let geometry = new THREE.Geometry();
+
+					var theta = count * 0.175 + Math.PI;
+					var y = - ( count * 8 ) + 450;
+
+					var vertex = new THREE.Vector3();
+
+					cylindrical.set( 120, theta, y );
+
+					vertex.setFromCylindrical( cylindrical );
+
+					geometry.vertices.push( vertex );
+
+						let material = new THREE.PointsMaterial( { size: 35, sizeAttenuation: false, map: sprite, alphaTest: 0.5, transparent: true } );
+						material.color.setRGB( colors[block.status][0], colors[block.status][1], colors[block.status][2] );
+
+						let particles = new THREE.Points( geometry, material );
+						scene.add( particles );
+
+				count = count + 1;
+			}
+			function randomDate(start, end) {
+				return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+			}
+			//randomDate(new Date(2012, 0, 1), new Date())
+			function randomInt(min, max) {
+					return Math.floor(Math.random() * (max - min + 1)) + min;
+			}
+
+			function randomString(len)
+			{
+					var text = "";
+					var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+					for( var i=0; i < len; i++ )
+							text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+					return text;
+			}
+
+
+
+			function init() {
+
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 2, 2000 );
+				camera.position.z = 1000;
+
+				scene = new THREE.Scene();
+				scene.fog = new THREE.FogExp2( 0x000000, 0.001 );
+
+				sprite = new THREE.TextureLoader().load( "textures/sprites/disc.png" );
+
+				for ( i = 0; i < 100; i++ ) {
+					spawn({idx: count, time: 100, op: "PUT", status: randomInt(0,2), hash: "U9F8J39FA0X90"});
+				}
+				setInterval( function() {
+					if( count < 2000 ) {
+						spawn({idx: count, time: 100, op: "PUT", status: randomInt(0,2), hash: "U9F8J39FA0X90"});
+					}
+				}, 600 );
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				mouseX = event.clientX - windowHalfX;
+				mouseY = event.clientY - windowHalfY;
+
+			}
+
+			function onDocumentTouchStart( event ) {
+
+				if ( event.touches.length == 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+			}
+
+			function onDocumentTouchMove( event ) {
+
+				if ( event.touches.length == 1 ) {
+
+					event.preventDefault();
+
+					mouseX = event.touches[ 0 ].pageX - windowHalfX;
+					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				stats.update();
+
+			}
+
+			function render() {
+
+				var time = Date.now() * 0.00005;
+
+				camera.position.x = 1000 * Math.cos( mouseX * time * 0.00000000001 );
+				camera.position.z = 1000 * Math.sin( mouseX * time * 0.00000000001 );
+				camera.position.y += ( - mouseY - camera.position.y ) * 0.05;
+
+				camera.lookAt( new THREE.Vector3(0,camera.position.y,0) );
+
+				//h = ( 360 * ( 1.0 + time ) % 360 ) / 360;
+				//material.color.setHSL( h, 0.5, 0.5 );
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>
