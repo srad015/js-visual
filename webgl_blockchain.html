@@ -1,99 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <title>three.js webgl - particles - billboards</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <style>
-        body {
-            background-color: #000000;
-            margin: 0px;
-            overflow: hidden;
-            font-family: Monospace;
-            font-size: 13px;
-            text-align: center;
-            font-weight: bold;
-            text-align: center;
-        }
+	<head>
+		<title>three.js webgl - particles - billboards</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				text-align:center;
+			}
 
-        a {
-            color: #0078ff;
-        }
+			a {
+				color:#0078ff;
+			}
 
-        #info {
-            color: #fff;
-            position: absolute;
-            top: 0px;
-            width: 100%;
-            padding: 5px;
-            z-index: 100;
-        }
-    </style>
-</head>
-<body>
+			#info {
+				color:#fff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				z-index:100;
+			}
 
-    <div id="info">
-        <a href="http://threejs.org" target="_blank">three.js</a> - webgl particle billboards example
-    </div>
+		</style>
+	</head>
+	<body>
 
-    <script src="../build/three.js"></script>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl particle billboards example
+		</div>
 
-    <script src="js/Detector.js"></script>
-    <script src="js/libs/stats.min.js"></script>
+		<script src="../build/three.js"></script>
 
-    <script>
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			var container, stats;
-			var camera, scene, renderer, particles, i, h, color, sprite, size;
-			var colors = [ [0.0, 0.5, 0.5], [1.0, 0.5, 0.5], [1.0, 1.0, 0.5] ];
-			var mouseX = 0, mouseY = 0;
-			var blocks = [/*{idx: 0, time: 100, op: "PUT", status: 0, hash: "U9F8J39FA0X90, mat: {}, geo: {}"}*/]; // Genesis
+			var camera, scene, renderer, i, h, color, size;
+			//var colors = [ [0.0, 0.5, 0.5], [1.0, 0.5, 0.5], [1.0, 1.0, 0.5] ];
+			var mouse = new THREE.Vector2(), INTERSECTED;
+			var intrsct_mouse = new THREE.Vector2();
+			var raycaster;
+
+			var default_materials = [];
+			var emissive_materials = [];
 
 			var windowHalfX = window.innerWidth / 2;
 			var windowHalfY = window.innerHeight / 2;
 
 			var count = 0;
+			var BOX_DIM = 20;
 
 			init();
 			animate();
 
-            //function resize(block, diff)
-            //{
-            //    block.mat.size += diff;
-            //    scene.children[block.idx] = new THREE.Points(block.geo, block.mat); // TODO: optimize, edit material alone
-            //}
+			var rotWorldMatrix;
+			var defaultRotation = new THREE.Euler( 0, 1, 1.57, 'XYZ' );
+			// Rotate an object around an arbitrary axis in world space
+			function rotateAroundWorldAxis(object, axis, radians) {
+			    rotWorldMatrix = new THREE.Matrix4();
+			    rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
 
-            //function intersect()
-            //{
-            //    let obj = raycaster(scene.children, ray);
-            //    obj.materials[0].size = 60;
-            //    obj = new THREE.Points(obj.geometry, obj.material);
-            //}
+			    rotWorldMatrix.multiply(object.matrix);
+
+			    object.matrix = rotWorldMatrix;
+
+			    object.rotation.setFromRotationMatrix(object.matrix);
+			}
 
 			function spawn(block)
 			{
 				var cylindrical = new THREE.Cylindrical();
-				let geometry = new THREE.Geometry();
+				let geometry = new THREE.SphereGeometry( BOX_DIM, BOX_DIM, BOX_DIM );
 
-				var theta = count * 0.175 + Math.PI;
-				var y = - ( count * 8 ) + 450;
+					var theta = count * 0.175 + Math.PI;
+					var y = - ( count * 3 ) + 450;
 
-				var vertex = new THREE.Vector3();
+					cylindrical.set( 275, theta, y );
 
-				cylindrical.set( 120, theta, y );
-
-				vertex.setFromCylindrical( cylindrical );
-
-				geometry.vertices.push( vertex );
-
-				let material = new THREE.PointsMaterial( { size: 35, sizeAttenuation: false, map: sprite, alphaTest: 0.5, transparent: true } );
-				material.color.setRGB( colors[block.status][0], colors[block.status][1], colors[block.status][2] );
-
-				let particles = new THREE.Points( geometry, material );
-				scene.add( particles );
-                
-                //blocks.push({idx: block.idx, time: block.time, op: block.op, status: block.status, hash: block.hash, mat: block.material, geo: block.geometry});
+						//let material = new THREE.MeshStandardMaterial( );
+						//material.color.setRGB( colors[block.status][0], colors[block.status][1], colors[block.status][2] );
+						let object = new THREE.Mesh( geometry, default_materials[ block.status ] );
+						object.position.setFromCylindrical( cylindrical );
+						object.userData = { status: block.status };
+						//rotateAroundWorldAxis(object, new THREE.Vector3(1,0,1), 180 );
+						//object.setRotationFromAxisAngle(new THREE.Vector3(1,0,1), 180);
+						//object.getWorldRotation(defaultRotation); // TODO stop updating every spawn
+						scene.add( object );
 
 				count = count + 1;
 			}
@@ -119,7 +122,7 @@
 
 
 			function init() {
-
+				raycaster = new THREE.Raycaster();
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
@@ -130,13 +133,24 @@
 				scene = new THREE.Scene();
 				scene.fog = new THREE.FogExp2( 0x000000, 0.001 );
 
-				sprite = new THREE.TextureLoader().load( "textures/sprites/disc.png" );
+				var light = new THREE.DirectionalLight( 0xffffff, 1 );
+				light.name = "light";
+				scene.add( light );
+				scene.add( new THREE.AmbientLight( 0xcccccc ) );
+
+				default_materials.push( new THREE.MeshStandardMaterial( {color: 0x007777} ) );
+				default_materials.push( new THREE.MeshStandardMaterial( {color: 0xff7777} ) );
+				default_materials.push( new THREE.MeshStandardMaterial( {color: 0xffff77} ) );
+				emissive_materials.push( new THREE.MeshStandardMaterial( {color: 0x007777, emissive: 0xffffff} ) );
+				emissive_materials.push( new THREE.MeshStandardMaterial( {color: 0xff7777, emissive: 0xffffff} ) );
+				emissive_materials.push( new THREE.MeshStandardMaterial( {color: 0xffff77, emissive: 0xffffff} ) );
+
 
 				for ( i = 0; i < 100; i++ ) {
 					spawn({idx: count, time: 100, op: "PUT", status: randomInt(0,2), hash: "U9F8J39FA0X90"});
 				}
 				setInterval( function() {
-					if( count < 2000 ) {
+					if( count < 500 ) {
 						spawn({idx: count, time: 100, op: "PUT", status: randomInt(0,2), hash: "U9F8J39FA0X90"});
 					}
 				}, 600 );
@@ -144,6 +158,7 @@
 				renderer = new THREE.WebGLRenderer();
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor (0xcccccc, 1);
 				container.appendChild( renderer.domElement );
 
 				stats = new Stats();
@@ -170,10 +185,15 @@
 			}
 
 			function onDocumentMouseMove( event ) {
+				event.preventDefault();
+				//mouse.x = - ( event.clientX - windowHalfX );
+				//mouse.y = event.clientY - windowHalfY;
 
-				mouseX = event.clientX - windowHalfX;
-				mouseY = event.clientY - windowHalfY;
+				intrsct_mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				intrsct_mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
+				mouse.x -= 5*intrsct_mouse.x;
+				mouse.y -= 5*intrsct_mouse.y;
 			}
 
 			function onDocumentTouchStart( event ) {
@@ -182,8 +202,8 @@
 
 					event.preventDefault();
 
-					mouseX = event.touches[ 0 ].pageX - windowHalfX;
-					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+					mouse.x = event.touches[ 0 ].pageX - windowHalfX;
+					mouse.y = event.touches[ 0 ].pageY - windowHalfY;
 
 				}
 			}
@@ -194,8 +214,8 @@
 
 					event.preventDefault();
 
-					mouseX = event.touches[ 0 ].pageX - windowHalfX;
-					mouseY = event.touches[ 0 ].pageY - windowHalfY;
+					mouse.x = event.touches[ 0 ].pageX - windowHalfX;
+					mouse.y = event.touches[ 0 ].pageY - windowHalfY;
 
 				}
 
@@ -212,23 +232,61 @@
 
 			}
 
+			function intersect()
+			{
+				raycaster.setFromCamera( intrsct_mouse, camera );
+
+				var intersects = raycaster.intersectObjects( scene.children );
+
+				if ( intersects.length > 0 ) {
+
+					if ( INTERSECTED != intersects[ 0 ].object ) {
+
+						if ( INTERSECTED ) {
+							//INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+							INTERSECTED.material = default_materials[ INTERSECTED.userData.status ];
+							INTERSECTED.geometry = new THREE.SphereGeometry( BOX_DIM, BOX_DIM, BOX_DIM );
+						}
+
+						INTERSECTED = intersects[ 0 ].object;
+
+						INTERSECTED.material = emissive_materials[ INTERSECTED.userData.status ];
+
+						INTERSECTED.geometry = new THREE.SphereGeometry( BOX_DIM*1.5, BOX_DIM*1.5, BOX_DIM*1.5 );
+
+					}
+
+				} else {
+
+					if ( INTERSECTED ) {
+						INTERSECTED.material = default_materials[ INTERSECTED.userData.status ];
+						INTERSECTED.geometry = new THREE.SphereGeometry( BOX_DIM, BOX_DIM, BOX_DIM );
+						//INTERSECTED.setRotationFromAxisAngle(new THREE.Vector3(1,0,1), 180);
+					}
+
+					INTERSECTED = null;
+
+				}
+			}
+
 			function render() {
-
 				var time = Date.now() * 0.00005;
+				intersect();
+				//if( INTERSECTED )
+				//	rotateAroundWorldAxis(INTERSECTED, new THREE.Vector3(0,1,0), time * 0.000000001);
 
-				camera.position.x = 1000 * Math.cos( mouseX * time * 0.00000000001 );
-				camera.position.z = 1000 * Math.sin( mouseX * time * 0.00000000001 );
-				camera.position.y += ( - mouseY - camera.position.y ) * 0.05;
+				camera.position.x = 1000 * Math.cos( mouse.x * time * 0.00000000001 );
+				camera.position.z = 1000 * Math.sin( mouse.x * time * 0.00000000001 );
+				camera.position.y += ( - mouse.y - camera.position.y ) * 0.05;
 
 				camera.lookAt( new THREE.Vector3(0,camera.position.y,0) );
 
-				//h = ( 360 * ( 1.0 + time ) % 360 ) / 360;
-				//material.color.setHSL( h, 0.5, 0.5 );
+				//var tmp = scene.getObjectByName("light");
+				//tmp.position.copy( camera.position );
 
 				renderer.render( scene, camera );
-
 			}
 
-    </script>
-</body>
+		</script>
+	</body>
 </html>
