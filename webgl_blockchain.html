@@ -1,55 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<title>three.js webgl - particles - billboards</title>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-		<style>
-			body {
-				background-color: #000000;
-				margin: 0px;
-				overflow: hidden;
-				font-family:Monospace;
-				font-size:13px;
-				text-align:center;
-				font-weight: bold;
-				text-align:center;
-			}
+<head>
+    <title>three.js webgl - particles - billboards</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            background-color: #000000;
+            margin: 0px;
+            overflow: hidden;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: center;
+            font-weight: bold;
+            text-align: center;
+        }
 
-			a {
-				color:#0078ff;
-			}
+        a {
+            color: #0078ff;
+        }
 
-			#info {
-				color:#fff;
-				position: absolute;
-				top: 0px; width: 100%;
-				padding: 5px;
-				z-index:100;
-			}
+        #info {
+            color: #fff;
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            padding: 5px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
 
-		</style>
-	</head>
-	<body>
+    <div id="info">
+        <a href="http://threejs.org" target="_blank">three.js</a> - webgl particle billboards example
+    </div>
 
-		<div id="info">
-			<a href="http://threejs.org" target="_blank">three.js</a> - webgl particle billboards example
-		</div>
+    <script src="../build/three.js"></script>
 
-		<script src="../build/three.js"></script>
+    <script src="js/Detector.js"></script>
+    <script src="js/libs/stats.min.js"></script>
 
-		<script src="js/Detector.js"></script>
-		<script src="js/libs/stats.min.js"></script>
-
-		<script>
-
+    <script>
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			var container, stats;
 			var camera, scene, renderer, particles, i, h, color, sprite, size;
 			var colors = [ [0.0, 0.5, 0.5], [1.0, 0.5, 0.5], [1.0, 1.0, 0.5] ];
 			var mouseX = 0, mouseY = 0;
-			var blocks = [{idx: 0, time: 100, op: "PUT", status: 0, hash: "U9F8J39FA0X90"}]; // Genesis
+			var blocks = [/*{idx: 0, time: 100, op: "PUT", status: 0, hash: "U9F8J39FA0X90, mat: {}, geo: {}"}*/]; // Genesis
 
 			var windowHalfX = window.innerWidth / 2;
 			var windowHalfY = window.innerHeight / 2;
@@ -59,27 +58,42 @@
 			init();
 			animate();
 
+            //function resize(block, diff)
+            //{
+            //    block.mat.size += diff;
+            //    scene.children[block.idx] = new THREE.Points(block.geo, block.mat); // TODO: optimize, edit material alone
+            //}
+
+            //function intersect()
+            //{
+            //    let obj = raycaster(scene.children, ray);
+            //    obj.materials[0].size = 60;
+            //    obj = new THREE.Points(obj.geometry, obj.material);
+            //}
+
 			function spawn(block)
 			{
 				var cylindrical = new THREE.Cylindrical();
 				let geometry = new THREE.Geometry();
 
-					var theta = count * 0.175 + Math.PI;
-					var y = - ( count * 8 ) + 450;
+				var theta = count * 0.175 + Math.PI;
+				var y = - ( count * 8 ) + 450;
 
-					var vertex = new THREE.Vector3();
+				var vertex = new THREE.Vector3();
 
-					cylindrical.set( 120, theta, y );
+				cylindrical.set( 120, theta, y );
 
-					vertex.setFromCylindrical( cylindrical );
+				vertex.setFromCylindrical( cylindrical );
 
-					geometry.vertices.push( vertex );
+				geometry.vertices.push( vertex );
 
-						let material = new THREE.PointsMaterial( { size: 35, sizeAttenuation: false, map: sprite, alphaTest: 0.5, transparent: true } );
-						material.color.setRGB( colors[block.status][0], colors[block.status][1], colors[block.status][2] );
+				let material = new THREE.PointsMaterial( { size: 35, sizeAttenuation: false, map: sprite, alphaTest: 0.5, transparent: true } );
+				material.color.setRGB( colors[block.status][0], colors[block.status][1], colors[block.status][2] );
 
-						let particles = new THREE.Points( geometry, material );
-						scene.add( particles );
+				let particles = new THREE.Points( geometry, material );
+				scene.add( particles );
+                
+                //blocks.push({idx: block.idx, time: block.time, op: block.op, status: block.status, hash: block.hash, mat: block.material, geo: block.geometry});
 
 				count = count + 1;
 			}
@@ -215,6 +229,6 @@
 
 			}
 
-		</script>
-	</body>
+    </script>
+</body>
 </html>
