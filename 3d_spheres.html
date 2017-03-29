@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - particles - billboards</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				text-align:center;
+			}
+
+			a {
+				color:#0078ff;
+			}
+
+			#info {
+				color:#fff;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				z-index:100;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div id="info">
+			<a href="http://threejs.org" target="_blank">three.js</a> - webgl particle billboards example
+		</div>
+
+		<script src="../build/three.js"></script>
+
+		<script src="js/Detector.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+
+			var buckets = [];
+
+			var container, stats;
+			var camera, scene, renderer, i, h, color;
+			//var colors = [ [0.0, 0.5, 0.5], [1.0, 0.5, 0.5], [1.0, 1.0, 0.5] ];
+			var mouse = new THREE.Vector2(), INTERSECTED;
+			var intrsct_mouse = new THREE.Vector2();
+			var raycaster;
+
+			var default_materials = [];
+			var emissive_materials = [];
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var count = 0;
+			var BOX_DIM = 30;
+
+			init();
+			animate();
+
+			var rotWorldMatrix;
+			var defaultRotation = new THREE.Euler( 0, 1, 1.57, 'XYZ' );
+
+			// Rotate an object around an arbitrary axis in world space
+			function rotateAroundWorldAxis(object, axis, radians) {
+			    rotWorldMatrix = new THREE.Matrix4();
+			    rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
+
+			    rotWorldMatrix.multiply(object.matrix);
+
+			    object.matrix = rotWorldMatrix;
+
+			    object.rotation.setFromRotationMatrix(object.matrix);
+			}
+
+			function spawn(block, x, y, z, sz)
+			{
+
+				//var cylindrical = new THREE.Cylindrical();
+				let geometry = new THREE.SphereGeometry( sz, sz, sz );
+
+					//var theta = count *  0.175 + Math.PI;
+					//var y = - ( count * 6 ) + 450;
+
+					//cylindrical.set( 340, theta, y );
+
+						//let material = new THREE.MeshStandardMaterial( );
+						//material.color.setRGB( colors[block.status][0], colors[block.status][1], colors[block.status][2] );
+						let object = new THREE.Mesh( geometry, default_materials[ block.status ] );
+						//object.position.setFromCylindrical( cylindrical );
+						object.userData = { status: block.status, size: sz  };
+
+						object.position.x = x;
+						object.position.y = y;
+						object.position.z = z;
+
+						buckets.push( object );
+
+						//rotateAroundWorldAxis(object, new THREE.Vector3(1,0,1), 180 );
+						//object.setRotationFromAxisAngle(new THREE.Vector3(1,0,1), 180);
+						//object.getWorldRotation(defaultRotation); // TODO stop updating every spawn
+						scene.add( object );
+
+				count = count + 1;
+			}
+			function randomDate(start, end) {
+				return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+			}
+			//randomDate(new Date(2012, 0, 1), new Date())
+			function randomInt(min, max) {
+					return Math.floor(Math.random() * (max - min + 1)) + min;
+			}
+
+			function randomString(len)
+			{
+					var text = "";
+					var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+					for( var i=0; i < len; i++ )
+							text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+					return text;
+			}
+var camDistance = 800;
+//var particleLight;
+
+function addMaterial(color)
+{
+	var reflectionCube = new THREE.CubeTextureLoader()
+						.setPath( 'textures/cube/skybox/' )
+						.load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg' ] );
+					reflectionCube.format = THREE.RGBFormat;
+
+					var imgTexture = new THREE.TextureLoader().load( "textures/planets/moon_1024.jpg" );
+									imgTexture.wrapS = imgTexture.wrapT = THREE.RepeatWrapping;
+									imgTexture.anisotropy = 16;
+									imgTexture = null;
+	default_materials.push( new THREE.MeshStandardMaterial( {
+					map: imgTexture,
+					bumpMap: imgTexture,
+					bumpScale: 1,
+					color: color,
+					metalness: 0.89,
+					roughness: 0.4,
+					shading: THREE.SmoothShading,
+					envMap: reflectionCube,
+					normalMap: new THREE.TextureLoader().load( "textures/waternormals.jpg" ),
+					normalScale: new THREE.Vector2( 0.8, 0.8 )
+				} ) );
+				emissive_materials.push( new THREE.MeshStandardMaterial( {
+								map: imgTexture,
+								bumpMap: imgTexture,
+								bumpScale: 1,
+								color: color,
+								metalness: 0.89,
+								roughness: 0.4,
+								shading: THREE.SmoothShading,
+								envMap: reflectionCube,
+								emissive: 0x77777777,
+								normalMap: new THREE.TextureLoader().load( "textures/waternormals.jpg" ),
+								normalScale: new THREE.Vector2( 0.8, 0.8 )
+							} ) );
+}
+			function init() {
+				raycaster = new THREE.Raycaster();
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 2, 2000 );
+				camera.position.z = camDistance;
+
+				scene = new THREE.Scene();
+				scene.fog = new THREE.FogExp2( 0xffffff, 0.000001 );
+
+				var light = new THREE.DirectionalLight( 0xffffff, 1 );
+				light.name = "light";
+				scene.add( light );
+				scene.add( new THREE.AmbientLight( 0xcccccc ) );
+
+
+				//particleLight = new THREE.Object3D();
+				//scene.add( particleLight );
+				//var pointLight = new THREE.PointLight( 0xffffff, 2, 800 );
+				//particleLight.add( pointLight );
+
+
+
+
+				addMaterial(0x00eeff);
+				addMaterial(0xff7777);
+				addMaterial(0xffff77);
+
+
+
+				for ( i = 0; i < 100; i++ ) {
+					let x = 2000 * Math.random() - 1000;
+					let y = 2000 * Math.random() - 1000;
+					let z = 2000 * Math.random() - 1000;
+					spawn({idx: count, time: 100, op: "PUT", status: randomInt(0,2), hash: "U9F8J39FA0X90"}, x, y, z, BOX_DIM);
+				}
+
+				setInterval( function() {
+					if( count < 500 ) {
+						let bucket_idx = randomInt(0, buckets.length);
+						let pos = buckets[bucket_idx].position;
+						spawn({idx: count, time: 100, op: "PUT", status: randomInt(0,2), hash: "U9F8J39FA0X90"}, pos.x+10,pos.y+10,pos.z+10, BOX_DIM/3);
+					}
+				}, 200 );
+
+				renderer = new THREE.WebGLRenderer({ antialias: true });
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setClearColor (0xcccccc, 1);
+				container.appendChild( renderer.domElement );
+				renderer.gammaInput = true;
+				renderer.gammaOutput = true;
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+				document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+				document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+				event.preventDefault();
+				//mouse.x = - ( event.clientX - windowHalfX );
+				//mouse.y = event.clientY - windowHalfY;
+
+				intrsct_mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				intrsct_mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+				mouse.x -= 5*intrsct_mouse.x;
+				mouse.y -= 5*intrsct_mouse.y;
+			}
+
+			function onDocumentTouchStart( event ) {
+
+				if ( event.touches.length == 1 ) {
+
+					event.preventDefault();
+
+					mouse.x = event.touches[ 0 ].pageX - windowHalfX;
+					mouse.y = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+			}
+
+			function onDocumentTouchMove( event ) {
+
+				if ( event.touches.length == 1 ) {
+
+					event.preventDefault();
+
+					mouse.x = event.touches[ 0 ].pageX - windowHalfX;
+					mouse.y = event.touches[ 0 ].pageY - windowHalfY;
+
+				}
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				stats.update();
+
+			}
+
+			function intersect()
+			{
+				raycaster.setFromCamera( intrsct_mouse, camera );
+
+				var intersects = raycaster.intersectObjects( scene.children );
+
+				if ( intersects.length > 0 ) {
+
+					if ( INTERSECTED != intersects[ 0 ].object ) {
+
+						if ( INTERSECTED ) {
+							//INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+							INTERSECTED.material = default_materials[ INTERSECTED.userData.status ];
+							let sz = INTERSECTED.userData.size;
+							INTERSECTED.geometry = new THREE.SphereGeometry( sz, sz, sz );
+						}
+
+						INTERSECTED = intersects[ 0 ].object;
+
+						INTERSECTED.material = emissive_materials[ INTERSECTED.userData.status ];
+
+						let sz = INTERSECTED.userData.size;
+						INTERSECTED.geometry = new THREE.SphereGeometry( sz*1.2, sz*1.2, sz*1.2 );
+
+					}
+
+				} else {
+
+					if ( INTERSECTED ) {
+						INTERSECTED.material = default_materials[ INTERSECTED.userData.status ];
+						let sz = INTERSECTED.userData.size;
+						INTERSECTED.geometry = new THREE.SphereGeometry( sz, sz, sz );
+						//INTERSECTED.setRotationFromAxisAngle(new THREE.Vector3(1,0,1), 180);
+					}
+
+					INTERSECTED = null;
+
+				}
+			}
+
+			function render() {
+				var time = Date.now() * 0.00005;
+				intersect();
+				//if( INTERSECTED )
+				//	rotateAroundWorldAxis(INTERSECTED, new THREE.Vector3(0,1,0), time * 0.000000001);
+
+				camera.position.x = camDistance * Math.cos( mouse.x * time * 0.00000000001 );
+				camera.position.z = camDistance * Math.sin( mouse.x * time * 0.00000000001 );
+				camera.position.y += ( - mouse.y - camera.position.y ) * 0.05;
+
+				camera.lookAt( new THREE.Vector3(0,camera.position.y,0) );
+				//particleLight.position.x = Math.sin( time * 7 ) * 300;
+				//				particleLight.position.y = Math.cos( time * 5 ) * 400;
+				//				particleLight.position.z = Math.cos( time * 3 ) * 300;
+
+				renderer.render( scene, camera );
+			}
+
+		</script>
+	</body>
+</html>
